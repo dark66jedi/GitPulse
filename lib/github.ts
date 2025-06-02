@@ -32,13 +32,14 @@ async function fetchFromGitHub<T>(endpoint: string): Promise<GitHubResponse<T>> 
 }
 
 export const github = {
-  // Obtenir les repos tendance (limité à 30 résultats)
   getTrendingRepos: () => 
     fetchFromGitHub<Repository>('/search/repositories?q=stars:>1&sort=stars&order=desc&per_page=30'),
   
-  // Rechercher des repos
   searchRepos: (query: string) => 
     fetchFromGitHub<Repository>(`/search/repositories?q=${encodeURIComponent(query)}&per_page=30`),
+
+  searchReposByKeyword: (query: string) => 
+    fetchFromGitHub<Repository>(`/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc`),
 };
 
 export type { Repository };
