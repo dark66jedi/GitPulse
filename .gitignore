@@ -2,6 +2,9 @@
 
 # dependencies
 node_modules/
+pass_supabase.txt
+supabase_cred.txt
+.env
 
 # Expo
 .expo/

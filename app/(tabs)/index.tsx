@@ -1,31 +1,59 @@
-import { StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, FlatList, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { github } from '../../lib/github';
+import RepoCard from '../../components/RepoCard';
+import type { Repository } from '../../lib/github';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+export default function TrendingScreen() {
+  const [repos, setRepos] = useState<Repository[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function TabOneScreen() {
+  useEffect(() => {
+    loadTrendingRepos();
+    console.log(repos)
+  }, []);
+
+  async function loadTrendingRepos() {
+    try {
+      // TODO: Récupérer les repositories trending
+      const trendingRepos = await github.getTrendingRepos();
+      console.log(trendingRepos.items)
+      setRepos(trendingRepos.items || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        data={repos}
+        keyExtractor={(item) => item.id.toString()} // Ensure `id` is a string
+        renderItem={({ item }) => <RepoCard repo={item} />}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  center: {
+    flex: 1,
     justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+    alignItems: 'center',
   },
 });
