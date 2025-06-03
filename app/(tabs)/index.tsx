@@ -38,49 +38,69 @@ export default function SearchScreen() {
     return () => clearTimeout(debounceTimeout);
   }, [query]);
 
+  // Helper function to extract owner and repo name from GitHub URL
+  function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
+    try {
+      // Handle URLs like: https://github.com/owner/repo
+      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+      if (match) {
+        return {
+          owner: match[1],
+          repo: match[2]
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error parsing GitHub URL:', url, error);
+      return null;
+    }
+  }
+
   async function loadBookmarks() {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('bookmarks').select('*');
-
+      // Get bookmark URLs from Supabase
+      const { data, error } = await supabase.from('bookmarks').select('repo_url');
+      
       if (error) throw error;
 
-      // Get basic repository data from Supabase, which should have the same structure
-      // as repositories from GitHub API search
-      const formatted: Repository[] = data.map((b: any) => {
-        // Handle the case where repo_name might be in "owner/repo" format
-        let repoName = b.repo_name;
-        let ownerLogin = b.repo_owner;
-        
-        if (b.repo_name && b.repo_name.includes('/') && !b.repo_owner) {
-          // If repo_name is "owner/repo" format and no separate owner field
-          const parts = b.repo_name.split('/');
-          ownerLogin = parts[0];
-          repoName = parts[1];
-        } else if (b.repo_name && b.repo_name.includes('/')) {
-          // If repo_name is "owner/repo" format, extract just the repo name
-          repoName = b.repo_name.split('/')[1];
+      if (!data || data.length === 0) {
+        setBookmarks([]);
+        return;
+      }
+
+      // Extract owner/repo from URLs and fetch fresh data from GitHub
+      const githubPromises = data.map(async (bookmark: any) => {
+        try {
+          const urlInfo = parseGitHubUrl(bookmark.repo_url);
+          if (!urlInfo) {
+            console.error('Invalid GitHub URL:', bookmark.repo_url);
+            return null;
+          }
+
+          // Fetch fresh repository data from GitHub API
+          const repoData = await github.getRepository(urlInfo.owner, urlInfo.repo);
+          return repoData;
+        } catch (error) {
+          console.error(`Error fetching GitHub data for ${bookmark.repo_url}:`, error);
+          return null;
         }
-        
-        return {
-          id: b.repo_id,
-          name: repoName,
-          description: b.repo_desc,
-          owner: { login: ownerLogin },
-          stargazers_count: b.repo_stars,
-          html_url: b.repo_url,
-        };
       });
 
-      // Debug: Log the formatted bookmark data
-      console.log('Formatted bookmarks:', formatted.map(repo => ({
+      // Wait for all GitHub API calls to complete
+      const githubResults = await Promise.all(githubPromises);
+      
+      // Filter out any failed requests (null values)
+      const validRepos = githubResults.filter((repo): repo is Repository => repo !== null);
+
+      console.log('Fresh bookmark data from GitHub:', validRepos.map(repo => ({
         id: repo.id,
         name: repo.name,
         owner: repo.owner?.login,
         stargazers_count: repo.stargazers_count,
       })));
 
-      setBookmarks(formatted);
+      setBookmarks(validRepos);
     } catch (err) {
       console.error('Error loading bookmarks:', err);
     } finally {

@@ -48,6 +48,30 @@ async function fetchFromGitHub<T>(endpoint: string): Promise<GitHubResponse<T>> 
   }
 }
 
+// Direct fetch for single repository (doesn't use the search wrapper)
+async function fetchSingleRepo(endpoint: string): Promise<Repository> {
+  try {
+    const response = await fetch(`${GITHUB_API_URL}${endpoint}`, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'RepoTrackerApp/1.0',
+      },
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('GitHub API Error Response:', errorBody);
+      throw new Error(`GitHub API error: ${response.status} - ${errorBody}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching repository from GitHub:', error);
+    throw error;
+  }
+}
+
 // Test function to verify your token works
 async function testToken() {
   console.log('Token value:', GITHUB_TOKEN);
@@ -102,6 +126,24 @@ async function getCommitStats(owner: string, repo: string): Promise<{ totalCommi
   }
 }
 
+async function getRepository(owner: string, repo: string): Promise<Repository> {
+  try {
+    console.log(`Fetching repository data for ${owner}/${repo}`);
+    const repository = await fetchSingleRepo(`/repos/${owner}/${repo}`);
+    
+    console.log(`✅ Successfully fetched ${owner}/${repo}:`, {
+      id: repository.id,
+      name: repository.name,
+      stars: repository.stargazers_count,
+    });
+    
+    return repository;
+  } catch (error) {
+    console.error(`Error fetching repository ${owner}/${repo}:`, error);
+    throw error;
+  }
+}
+
 export const github = {
   getTrendingRepos: () =>
     fetchFromGitHub<Repository>('/search/repositories?q=stars:>1&sort=stars&order=desc&per_page=10'),
@@ -109,6 +151,8 @@ export const github = {
   searchRepos: (query: string) =>
     fetchFromGitHub<Repository>(`/search/repositories?q=${encodeURIComponent(query)}&per_page=10`),
 
+  getRepository,
+  
   getCommitStats,
   
   // Add this for testing your token
