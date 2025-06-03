@@ -1,36 +1,25 @@
-import { useState, useEffect } from 'react';
-import { View, FlatList, ActivityIndicator, StyleSheet, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { github } from '../../lib/github';
+import { useEffect, useState } from 'react';
+import { View, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import RepoCard from '../../components/RepoCard';
-import type { Repository } from '../../lib/github';
 
-export default function TrendingScreen() {
-  const [repos, setRepos] = useState<Repository[]>([]);
+export default function TopReposScreen() {
+  const [repoUrls, setRepoUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadTrendingRepos();
-    // github.testToken();
+    fetch('https://api.github.com/search/repositories?q=stars:>1&sort=stars&order=desc&per_page=10', {
+      headers: {
+        Accept: 'application/vnd.github+json',
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const urls = data.items.map((repo: any) => repo.html_url);
+        setRepoUrls(urls);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
-
-  async function loadTrendingRepos() {
-    try {
-      const trendingRepos = await github.getTrendingRepos();
-      console.log(
-        trendingRepos.items?.map(repo => ({
-          id: repo.id,
-          name: repo.name,
-          owner: repo.owner?.login,
-        }))
-      );
-      setRepos(trendingRepos.items || []);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   if (loading) {
     return (
@@ -41,21 +30,15 @@ export default function TrendingScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <FlatList
-        data={repos}
-        keyExtractor={(item) => item.id.toString()} // Ensure `id` is a string
-        renderItem={({ item }) => <RepoCard repo={item} />}
-      />
-    </SafeAreaView>
+    <FlatList
+      data={repoUrls}
+      keyExtractor={(url) => url}
+      renderItem={({ item }) => <RepoCard url={item} />}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   center: {
     flex: 1,
     justifyContent: 'center',

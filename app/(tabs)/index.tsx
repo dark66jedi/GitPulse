@@ -5,102 +5,50 @@ import {
   FlatList, 
   ActivityIndicator, 
   StyleSheet, 
-  Text 
+  Text,
+  RefreshControl
 } from 'react-native';
-import { github } from '../../lib/github';
 import { supabase } from '../../lib/supabase';
 import RepoCard from '../../components/RepoCard';
-import type { Repository } from '../../lib/github';
-
-let debounceTimeout: NodeJS.Timeout;
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
-  const [repos, setRepos] = useState<Repository[]>([]);
+  const [repoUrls, setRepoUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [bookmarks, setBookmarks] = useState<Repository[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadBookmarks();
-  }, []);
+  // Reload bookmarks when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!query.trim()) {
+        loadBookmarks();
+      }
+    }, [query])
+  );
 
   useEffect(() => {
     if (!query.trim()) {
-      setRepos([]); // clear search results if input is empty
+      loadBookmarks();
       return;
     }
 
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(() => {
+    const timeout = setTimeout(() => {
       searchRepos();
-    }, 500); // wait 500ms after last keystroke
+    }, 500);
 
-    return () => clearTimeout(debounceTimeout);
+    return () => clearTimeout(timeout);
   }, [query]);
-
-  // Helper function to extract owner and repo name from GitHub URL
-  function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
-    try {
-      // Handle URLs like: https://github.com/owner/repo
-      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-      if (match) {
-        return {
-          owner: match[1],
-          repo: match[2]
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error parsing GitHub URL:', url, error);
-      return null;
-    }
-  }
 
   async function loadBookmarks() {
     setLoading(true);
     try {
-      // Get bookmark URLs from Supabase
       const { data, error } = await supabase.from('bookmarks').select('repo_url');
-      
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        setBookmarks([]);
-        return;
-      }
-
-      // Extract owner/repo from URLs and fetch fresh data from GitHub
-      const githubPromises = data.map(async (bookmark: any) => {
-        try {
-          const urlInfo = parseGitHubUrl(bookmark.repo_url);
-          if (!urlInfo) {
-            console.error('Invalid GitHub URL:', bookmark.repo_url);
-            return null;
-          }
-
-          // Fetch fresh repository data from GitHub API
-          const repoData = await github.getRepository(urlInfo.owner, urlInfo.repo);
-          return repoData;
-        } catch (error) {
-          console.error(`Error fetching GitHub data for ${bookmark.repo_url}:`, error);
-          return null;
-        }
-      });
-
-      // Wait for all GitHub API calls to complete
-      const githubResults = await Promise.all(githubPromises);
-      
-      // Filter out any failed requests (null values)
-      const validRepos = githubResults.filter((repo): repo is Repository => repo !== null);
-
-      console.log('Fresh bookmark data from GitHub:', validRepos.map(repo => ({
-        id: repo.id,
-        name: repo.name,
-        owner: repo.owner?.login,
-        stargazers_count: repo.stargazers_count,
-      })));
-
-      setBookmarks(validRepos);
+      const urls = (data || []).map((b: any) => b.repo_url);
+      setRepoUrls(urls);
     } catch (err) {
       console.error('Error loading bookmarks:', err);
     } finally {
@@ -111,8 +59,14 @@ export default function SearchScreen() {
   async function searchRepos() {
     setLoading(true);
     try {
-      const response = await github.searchRepos(query);
-      setRepos(response.items || []);
+      const response = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=10`, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+        },
+      });
+      const json = await response.json();
+      const urls = (json.items || []).map((repo: any) => repo.html_url);
+      setRepoUrls(urls);
     } catch (error) {
       console.error('Error searching repos:', error);
     } finally {
@@ -120,7 +74,18 @@ export default function SearchScreen() {
     }
   }
 
-  const displayRepos = query.trim() ? repos : bookmarks;
+  async function onRefresh() {
+    setRefreshing(true);
+    try {
+      if (!query.trim()) {
+        await loadBookmarks();
+      } else {
+        await searchRepos();
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -136,13 +101,21 @@ export default function SearchScreen() {
         <ActivityIndicator style={styles.center} size="large" />
       ) : (
         <FlatList
-          data={displayRepos}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <RepoCard repo={item} />}
+          data={repoUrls}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => <RepoCard url={item} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
               {query ? 'No search results found.' : 'No bookmarks yet.'}
             </Text>
+          }
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              colors={['#007AFF']} // Android
+              tintColor="#007AFF" // iOS
+            />
           }
         />
       )}
