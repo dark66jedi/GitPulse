@@ -30,7 +30,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="search"
+        name="index"
         options={{
           title: "GitPulse",
           tabBarIcon: ({ color, size }) => (
@@ -39,7 +39,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="top"
         options={{
           title: "Top Repos",
           tabBarIcon: ({ color, size }) => (

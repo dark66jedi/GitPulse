@@ -30,44 +30,64 @@ export default function RepoCard({ repo }: { repo: RepoProps }) {
     lastCommitDate: string | null;
   }>({ totalCommits: 0, lastCommitDate: null });
 
+  // Get current user and check bookmark status
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserId(user.id);
+          
+          // Check if this repo is bookmarked
+          const bookmarkStatus = await isBookmarked(user.id, repo.id);
+          setBookmarked(bookmarkStatus);
+        }
+      } catch (error) {
+        console.error('Error getting user or bookmark status:', error);
+      }
+    };
+
+    getCurrentUser();
+  }, [repo.id]);
+
+  // Fetch commit analytics
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
+        // Debug: Log what's being passed to the API
+        console.log('Fetching analytics for:', {
+          owner: repo.owner.login,
+          name: repo.name,
+          fullApiUrl: `https://api.github.com/repos/${repo.owner.login}/${repo.name}/commits`
+        });
+        
         const data = await github.getCommitStats(repo.owner.login, repo.name);
         setAnalytics(data);
       } catch (error) {
-        console.error('Error fetching analytics:', error);
+        console.error('Error fetching analytics for repo:', repo.name, error);
       }
     };
 
     fetchAnalytics();
-  }, []);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const stats = await github.getCommitStats(repo.owner.login, repo.name);
-        setAnalytics(stats);
-      } catch (error) {
-        console.error('Failed to fetch commit stats:', error);
-      }
-    };
-    fetchStats();
   }, [repo.owner.login, repo.name]);
 
   const handleBookmark = async () => {
     if (!userId) return;
 
-    if (bookmarked) {
-      await removeBookmark(userId, repo.id);
-    } else {
-      await addBookmark(userId, {
-        ...repo,
-        name: `${repo.owner.login}/${repo.name}`,
-        html_url: `https://github.com/${repo.owner.login}/${repo.name}`,
-      });
+    try {
+      if (bookmarked) {
+        await removeBookmark(userId, repo.id);
+      } else {
+        await addBookmark(userId, {
+          ...repo,
+          name: `${repo.owner.login}/${repo.name}`,
+          html_url: repo.html_url || `https://github.com/${repo.owner.login}/${repo.name}`,
+        });
+      }
+      setBookmarked(!bookmarked);
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
     }
-    setBookmarked(!bookmarked);
   };
 
   return (
@@ -87,7 +107,7 @@ export default function RepoCard({ repo }: { repo: RepoProps }) {
       <Text style={styles.description}>{repo.description}</Text>
       <Text>⭐ {repo.stargazers_count}</Text>
 
-      {/* 👇 Analytics section */}
+      {/* Analytics section */}
       <View style={{ marginTop: 8 }}>
         <Text>📝 Commits: {analytics.totalCommits}</Text>
         <Text>
