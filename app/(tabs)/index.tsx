@@ -11,14 +11,18 @@ export default function TrendingScreen() {
 
   useEffect(() => {
     loadTrendingRepos();
-    console.log(repos)
   }, []);
 
   async function loadTrendingRepos() {
     try {
-      // TODO: Récupérer les repositories trending
       const trendingRepos = await github.getTrendingRepos();
-      console.log(trendingRepos.items)
+      console.log(
+        trendingRepos.items?.map(repo => ({
+          id: repo.id,
+          name: repo.name,
+          owner: repo.owner?.login,
+        }))
+      );
       setRepos(trendingRepos.items || []);
     } catch (error) {
       console.error('Error:', error);

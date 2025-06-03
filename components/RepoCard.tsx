@@ -7,6 +7,8 @@ import {
   removeBookmark,
   isBookmarked,
 } from '../lib/bookmarks';
+import { github } from '../lib/github';
+import { formatDistanceToNow } from 'date-fns';
 
 type RepoProps = {
   id: number;
@@ -23,19 +25,35 @@ type RepoProps = {
 export default function RepoCard({ repo }: { repo: RepoProps }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
+  const [analytics, setAnalytics] = useState<{
+    totalCommits: number;
+    lastCommitDate: string | null;
+  }>({ totalCommits: 0, lastCommitDate: null });
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      const id = data?.user?.id;
-      setUserId(id ?? null);
-      if (id) {
-        const isMarked = await isBookmarked(id, repo.id);
-        setBookmarked(isMarked);
+    const fetchAnalytics = async () => {
+      try {
+        const data = await github.getCommitStats(repo.owner.login, repo.name);
+        setAnalytics(data);
+      } catch (error) {
+        console.error('Error fetching analytics:', error);
       }
     };
-    fetchUser();
+
+    fetchAnalytics();
   }, []);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const stats = await github.getCommitStats(repo.owner.login, repo.name);
+        setAnalytics(stats);
+      } catch (error) {
+        console.error('Failed to fetch commit stats:', error);
+      }
+    };
+    fetchStats();
+  }, [repo.owner.login, repo.name]);
 
   const handleBookmark = async () => {
     if (!userId) return;
@@ -68,6 +86,17 @@ export default function RepoCard({ repo }: { repo: RepoProps }) {
       <Text style={styles.owner}>{repo.owner.login}</Text>
       <Text style={styles.description}>{repo.description}</Text>
       <Text>⭐ {repo.stargazers_count}</Text>
+
+      {/* 👇 Analytics section */}
+      <View style={{ marginTop: 8 }}>
+        <Text>📝 Commits: {analytics.totalCommits}</Text>
+        <Text>
+          🕒 Last commit:{' '}
+          {analytics.lastCommitDate
+            ? formatDistanceToNow(new Date(analytics.lastCommitDate), { addSuffix: true })
+            : 'N/A'}
+        </Text>
+      </View>
     </Pressable>
   );
 }
