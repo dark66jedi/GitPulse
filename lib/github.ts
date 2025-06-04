@@ -14,6 +14,14 @@ export type Repository = {
   lastCommitDate: string | null;
 };
 
+export type Contribution = {
+  repoName: string;
+  repoUrl: string;
+  author: string;
+  message: string;
+  timestamp: string; // ISO 8601 string
+};
+
 async function fetchFromGitHub<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${GITHUB_API_URL}${endpoint}`, {
     headers: {
@@ -71,6 +79,23 @@ async function getRepoDetailsByUrl(url: string): Promise<Repository> {
   };
 }
 
+async function getUserContributions(username: string): Promise<Contribution[]> {
+  const events = await fetchFromGitHub<any[]>(`/users/${username}/events/public`);
+
+  return events
+    .filter((e) => e.type === 'PushEvent')
+    .flatMap((e) =>
+      e.payload.commits.map((c: any) => ({
+        repoName: e.repo.name,
+        repoUrl: `https://github.com/${e.repo.name}`,
+        author: c.author.name,
+        message: c.message,
+        timestamp: e.created_at,
+      }))
+    );
+}
+
 export const github = {
   getRepoDetailsByUrl,
+  getUserContributions,
 };

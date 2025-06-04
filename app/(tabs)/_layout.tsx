@@ -30,6 +30,16 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="people"
+        options={{
+          title: "Contributor Tracker",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="index"
         options={{
           title: "GitPulse",
