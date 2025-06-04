@@ -22,6 +22,14 @@ export type Contribution = {
   timestamp: string; // ISO 8601 string
 };
 
+export type ContributorStats = {
+  username: string;
+  name: string | null;
+  avatarUrl: string;
+  totalCommitsLastMonth: number;
+  topRepos: { name: string; commits: number }[];
+};
+
 async function fetchFromGitHub<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${GITHUB_API_URL}${endpoint}`, {
     headers: {
@@ -95,7 +103,57 @@ async function getUserContributions(username: string): Promise<Contribution[]> {
     );
 }
 
+async function getContributorStats(username: string): Promise<ContributorStats> {
+  const user = await fetchFromGitHub<{ name: string | null; avatar_url: string }>(`/users/${username}`);
+
+  const events = await fetchFromGitHub<any[]>(`/users/${username}/events/public`);
+
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
+  const commitsByRepo: Record<string, number> = {};
+
+  let totalCommits = 0;
+
+  for (const event of events) {
+    if (event.type === 'PushEvent') {
+      const eventDate = new Date(event.created_at);
+      if (eventDate >= oneMonthAgo) {
+        const repoName = event.repo.name;
+        const commitCount = event.payload.commits?.length || 0;
+        commitsByRepo[repoName] = (commitsByRepo[repoName] || 0) + commitCount;
+        totalCommits += commitCount;
+      }
+    }
+  }
+
+  const topRepos = Object.entries(commitsByRepo)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([name, commits]) => ({ name, commits }));
+
+  return {
+    username,
+    name: user.name,
+    avatarUrl: user.avatar_url,
+    totalCommitsLastMonth: totalCommits,
+    topRepos,
+  };
+}
+
+async function searchUsersByUsername(query: string) {
+  if (!query) return [];
+
+  const data = await fetchFromGitHub<{ items: any[] }>(`/search/users?q=${encodeURIComponent(query)}&per_page=10`);
+  return data.items.map((user) => ({
+    username: user.login,
+    avatarUrl: user.avatar_url,
+  }));
+}
+
 export const github = {
   getRepoDetailsByUrl,
   getUserContributions,
+  getContributorStats,
+  searchUsersByUsername,
 };

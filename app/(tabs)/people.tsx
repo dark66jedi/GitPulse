@@ -1,22 +1,32 @@
-import { useState } from 'react';
-import { View, TextInput, FlatList, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { github, Contribution } from '../../lib/github';
-import ContributionCard from '../../components/ContributionCard';
+import { useState, useEffect } from 'react';
+import { View, TextInput, FlatList, StyleSheet, Text } from 'react-native';
+import { github } from '../../lib/github';
+import ContributorCard from '../../components/ContributorCard';
 
-export default function PeopleScreen() {
-  const [username, setUsername] = useState('');
-  const [contributions, setContributions] = useState<Contribution[]>([]);
+export default function ContributorSearchScreen() {
+  const [query, setQuery] = useState('');
+  const [contributors, setContributors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  async function handleSearch() {
-    if (!username.trim()) return;
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (query.trim().length > 1) {
+        loadContributors();
+      } else {
+        setContributors([]);
+      }
+    }, 400); // debounce
+
+    return () => clearTimeout(delayDebounce);
+  }, [query]);
+
+  async function loadContributors() {
     setLoading(true);
     try {
-      const data = await github.getUserContributions(username.trim());
-      setContributions(data);
+      const results = await github.searchUsersByUsername(query);
+      setContributors(results);
     } catch (err) {
-      console.error('Failed to fetch contributions:', err);
-      setContributions([]);
+      console.error('Search failed:', err);
     } finally {
       setLoading(false);
     }
@@ -25,36 +35,34 @@ export default function PeopleScreen() {
   return (
     <View style={styles.container}>
       <TextInput
-        value={username}
-        onChangeText={setUsername}
-        onSubmitEditing={handleSearch}
-        placeholder="Enter GitHub username"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search GitHub users..."
         style={styles.input}
-        returnKeyType="search"
       />
-      {loading ? (
-        <ActivityIndicator style={styles.loading} size="large" />
-      ) : (
-        <FlatList
-          data={contributions}
-          keyExtractor={(item, index) => `${item.repoUrl}-${index}`}
-          renderItem={({ item }) => <ContributionCard contribution={item} />}
-          ListEmptyComponent={<Text style={styles.empty}>No contributions found.</Text>}
-        />
-      )}
+
+      <FlatList
+        data={contributors}
+        keyExtractor={(item) => item.username}
+        renderItem={({ item }) => <ContributorCard contributor={item} />}
+        ListEmptyComponent={!loading && query.length > 1 ? <Text style={styles.empty}>No users found</Text> : null}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, padding: 16 },
   input: {
-    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#ccc',
     padding: 12,
     borderRadius: 8,
-    fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  loading: { marginTop: 20 },
-  empty: { textAlign: 'center', marginTop: 20, color: '#666' },
+  empty: {
+    textAlign: 'center',
+    color: '#888',
+    marginTop: 20,
+  },
 });
