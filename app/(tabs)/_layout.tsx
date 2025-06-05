@@ -25,7 +25,7 @@ export default function TabsLayout() {
           headerTitle: () => (
             <Image
               source={require('../../assets/images/horizontal_icon.png')}
-              style={{ width: 140, resizeMode: 'contain' }}
+              style={{ width: 140, height: 40,resizeMode: 'contain' }}
             />
           ),
           headerRight: () => (
@@ -55,7 +55,7 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="top"
+          name="repos"
           options={{
             title: "Repositories",
             tabBarIcon: ({ color, size }) => (

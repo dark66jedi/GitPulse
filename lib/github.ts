@@ -200,10 +200,34 @@ async function getRecentContributions(username: string): Promise<Contribution[]>
   }
 }
 
+function getLast30DaysDate() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30); // subtract 30 days
+  return d.toISOString().split('T')[0]; // format as YYYY-MM-DD
+}
+
+async function getTopStarredRepos(): Promise<string[]> {
+  const data = await fetchFromGitHub<{ items: any[] }>(
+    `/search/repositories?q=stars:>1&sort=stars&order=desc&per_page=10`
+  );
+  return data.items.map((repo) => repo.html_url);
+}
+
+async function getTrendingReposLast30Days(): Promise<string[]> {
+  const since = getLast30DaysDate();
+  const data = await fetchFromGitHub<{ items: any[] }>(
+    `/search/repositories?q=created:>${since}&sort=stars&order=desc&per_page=10`
+  );
+  return data.items.map((repo) => repo.html_url);
+}
+
+
 export const github = {
   getRepoDetailsByUrl,
   getUserContributions,
   getContributorStats,
   searchUsersByUsername,
   getRecentContributions,
+  getTopStarredRepos,
+  getTrendingReposLast30Days
 };
