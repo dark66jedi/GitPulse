@@ -18,16 +18,20 @@ export type Contribution = {
   repoName: string;
   repoUrl: string;
   author: string;
+  authorAvatar: string;
   message: string;
-  timestamp: string; // ISO 8601 string
+  timestamp: string;
 };
 
 export type ContributorStats = {
   username: string;
-  name: string | null;
+  name?: string;
   avatarUrl: string;
   totalCommitsLastMonth: number;
-  topRepos: { name: string; commits: number }[];
+  topRepos: {
+    name: string;
+    commits: number;
+  }[];
 };
 
 async function fetchFromGitHub<T>(endpoint: string): Promise<T> {
@@ -105,41 +109,52 @@ async function getUserContributions(username: string): Promise<Contribution[]> {
 
 async function getContributorStats(username: string): Promise<ContributorStats> {
   const user = await fetchFromGitHub<{ name: string | null; avatar_url: string }>(`/users/${username}`);
+  const repos = await fetchFromGitHub<any[]>(`/users/${username}/repos?per_page=100`);
 
-  const events = await fetchFromGitHub<any[]>(`/users/${username}/events/public`);
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-
-  const commitsByRepo: Record<string, number> = {};
-
-  let totalCommits = 0;
-
-  for (const event of events) {
-    if (event.type === 'PushEvent') {
-      const eventDate = new Date(event.created_at);
-      if (eventDate >= oneMonthAgo) {
-        const repoName = event.repo.name;
-        const commitCount = event.payload.commits?.length || 0;
-        commitsByRepo[repoName] = (commitsByRepo[repoName] || 0) + commitCount;
-        totalCommits += commitCount;
+  const repoStats = await Promise.all(
+    repos.map(async (repo) => {
+      try {
+        const commits = await fetchFromGitHub<any[]>(
+          `/repos/${repo.owner.login}/${repo.name}/commits?author=${username}&since=${since}`
+        );
+        return {
+          name: repo.name,
+          commits: commits.length,
+        };
+      } catch (err) {
+        console.warn(`Failed to fetch commits for ${repo.name}`, err);
+        return {
+          name: repo.name,
+          commits: 0,
+        };
       }
-    }
-  }
+    })
+  );
 
-  const topRepos = Object.entries(commitsByRepo)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
-    .map(([name, commits]) => ({ name, commits }));
+  const activeRepos = repoStats
+    .filter((r) => r.commits > 0)
+    .sort((a, b) => b.commits - a.commits)
+    .slice(0, 3);
+
+  const totalCommits = repoStats.reduce((acc, r) => acc + r.commits, 0);
+
+  console.log({username,
+    name: user.name ?? undefined,
+    avatarUrl: user.avatar_url,
+    totalCommitsLastMonth: totalCommits,
+    topRepos: activeRepos})
 
   return {
     username,
-    name: user.name,
+    name: user.name ?? undefined,
     avatarUrl: user.avatar_url,
     totalCommitsLastMonth: totalCommits,
-    topRepos,
+    topRepos: activeRepos,
   };
 }
+
 
 async function searchUsersByUsername(query: string) {
   if (!query) return [];
@@ -151,9 +166,44 @@ async function searchUsersByUsername(query: string) {
   }));
 }
 
+async function getRecentContributions(username: string): Promise<Contribution[]> {
+  try {
+    const events = await fetchFromGitHub<any[]>(`/users/${username}/events/public`);
+
+    const contributions: Contribution[] = [];
+
+    for (const event of events) {
+      if (event.type === 'PushEvent') {
+        const repoName = event.repo.name;
+        const repoUrl = `https://github.com/${repoName}`;
+        const timestamp = event.created_at;
+        const author = event.actor?.login ?? username;
+        const authorAvatar = event.actor?.avatar_url ?? '';
+
+        for (const commit of event.payload.commits) {
+          contributions.push({
+            repoName,
+            repoUrl,
+            author,
+            authorAvatar,
+            message: commit.message,
+            timestamp,
+          });
+        }
+      }
+    }
+
+    return contributions;
+  } catch (error) {
+    console.error(`Failed to fetch recent contributions for ${username}:`, error);
+    return [];
+  }
+}
+
 export const github = {
   getRepoDetailsByUrl,
   getUserContributions,
   getContributorStats,
   searchUsersByUsername,
+  getRecentContributions,
 };

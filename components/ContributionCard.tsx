@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { Linking } from 'react-native';
 
 type Contribution = {
   repoName: string;
   repoUrl: string;
   author: string;
+  authorAvatar?: string; // optional but recommended
   message: string;
   timestamp: string; // ISO string
 };
@@ -15,11 +16,15 @@ export default function ContributionCard({ contribution }: { contribution: Contr
   return (
     <Pressable style={styles.card} onPress={() => openRepo(contribution.repoUrl)}>
       <View style={styles.header}>
-        <Text style={styles.author}>{contribution.author}</Text>
-        <Text style={styles.repo}>{contribution.repoName}</Text>
+        <Image source={{ uri: contribution.authorAvatar }} style={styles.avatar} />
+        <View style={styles.headerText}>
+          <Text style={styles.author}>{contribution.author}</Text>
+          <Text style={styles.repoName}>{contribution.repoName}</Text>
+        </View>
+        <Text style={styles.timeAgo}>{timeAgo}</Text>
       </View>
+
       <Text style={styles.message}>{contribution.message}</Text>
-      <Text style={styles.timestamp}>🕒 {timeAgo}</Text>
     </Pressable>
   );
 }
@@ -38,8 +43,7 @@ function getTimeAgo(dateString: string): string {
 }
 
 function openRepo(url: string) {
-  // You can use `Linking.openURL` if you'd like
-  console.log('Open repo:', url);
+  Linking.openURL(url);
 }
 
 const styles = StyleSheet.create({
@@ -53,24 +57,33 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  headerText: {
+    flex: 1,
   },
   author: {
     fontWeight: 'bold',
     fontSize: 16,
     color: '#003366',
   },
-  repo: {
-    fontStyle: 'italic',
-    color: '#444',
+  repoName: {
+    fontSize: 14,
+    color: '#666',
+  },
+  timeAgo: {
+    fontSize: 12,
+    color: '#999',
   },
   message: {
-    marginVertical: 8,
     fontSize: 15,
-  },
-  timestamp: {
-    color: '#666',
-    fontSize: 13,
+    marginTop: 4,
   },
 });
