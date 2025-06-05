@@ -1,9 +1,8 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { TouchableOpacity, Alert } from "react-native";
+import { TouchableOpacity, Alert, View, Image, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from '../../lib/supabase';
-
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -19,45 +18,67 @@ export default function TabsLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "#007AFF",
-        headerRight: () => (
-          <TouchableOpacity onPress={handleLogout} style={{ marginRight: 16 }}>
-            <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-          </TouchableOpacity>
-        ),
-      }}
-    >
-      <Tabs.Screen
-        name="people"
-        options={{
-          title: "Contributor Tracker",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: "#007AFF",
+          headerTitle: () => (
+            <Image
+              source={require('../../assets/images/horizontal_icon.png')}
+              style={{ width: 140, resizeMode: 'contain' }}
+            />
+          ),
+          headerRight: () => (
+            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 16 }}>
+              <Ionicons name="log-out-outline" size={24} color="#007AFF" />
+            </TouchableOpacity>
           ),
         }}
-      />
+      >
+        <Tabs.Screen
+          name="people"
+          options={{
+            title: "Contributors",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person" size={size} color={color} />
+            ),
+          }}
+        />
 
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "GitPulse",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="top"
-        options={{
-          title: "Top Repos",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="star" size={size} color={color} />
-          ),
-        }}
-      />
-      
-    </Tabs>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="top"
+          options={{
+            title: "Repositories",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="git-compare" size={size} color={color} />
+            ),
+          }}
+        />
+      </Tabs>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  footer: {
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    pointerEvents: 'none', // make it non-interactive
+  },
+  footerImage: {
+    width: 100,
+    height: 100,
+  },
+});
