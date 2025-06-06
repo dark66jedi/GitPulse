@@ -330,17 +330,16 @@ async function searchUsersByUsername(query: string) {
 async function getRecentContributions(username: string): Promise<Contribution[]> {
   try {
     const events = await fetchFromGitHub<any[]>(`/users/${username}/events/public`);
-
     const contributions: Contribution[] = [];
 
     for (const event of events) {
-      if (event.type === 'PushEvent') {
-        const repoName = event.repo.name;
-        const repoUrl = `https://github.com/${repoName}`;
-        const timestamp = event.created_at;
-        const author = event.actor?.login ?? username;
-        const authorAvatar = event.actor?.avatar_url ?? '';
+      const repoName = event.repo?.name;
+      const repoUrl = `https://github.com/${repoName}`;
+      const timestamp = event.created_at;
+      const author = event.actor?.login ?? username;
+      const authorAvatar = event.actor?.avatar_url ?? '';
 
+      if (event.type === 'PushEvent') {
         for (const commit of event.payload.commits) {
           contributions.push({
             repoName,
@@ -348,6 +347,20 @@ async function getRecentContributions(username: string): Promise<Contribution[]>
             author,
             authorAvatar,
             message: commit.message,
+            timestamp,
+          });
+        }
+      }
+
+      if (event.type === 'PullRequestEvent') {
+        const pr = event.payload.pull_request;
+        if (pr) {
+          contributions.push({
+            repoName,
+            repoUrl,
+            author,
+            authorAvatar,
+            message: `Opened PR: ${pr.title}`,
             timestamp,
           });
         }
@@ -360,6 +373,7 @@ async function getRecentContributions(username: string): Promise<Contribution[]>
     return [];
   }
 }
+
 
 function getLast30DaysDate() {
   const d = new Date();

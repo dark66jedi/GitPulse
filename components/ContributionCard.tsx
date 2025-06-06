@@ -1,17 +1,19 @@
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Linking } from 'react-native';
-import Card from './Card'; // Adjust the import path as needed
+import { useTheme } from '../lib/theme';
+import Card from './Card';
 
 type Contribution = {
   repoName: string;
   repoUrl: string;
   author: string;
-  authorAvatar?: string; // optional but recommended
+  authorAvatar?: string;
   message: string;
-  timestamp: string; // ISO string
+  timestamp: string;
 };
 
 export default function ContributionCard({ contribution }: { contribution: Contribution }) {
+  const { theme } = useTheme();
   const timeAgo = getTimeAgo(contribution.timestamp);
 
   const handleOpenRepo = () => {
@@ -23,13 +25,13 @@ export default function ContributionCard({ contribution }: { contribution: Contr
       <View style={styles.header}>
         <Image source={{ uri: contribution.authorAvatar }} style={styles.avatar} />
         <View style={styles.headerText}>
-          <Text style={styles.author}>{contribution.author}</Text>
-          <Text style={styles.repoName}>{contribution.repoName}</Text>
+          <Text style={[styles.author, { color: theme.colors.primary }]}>{contribution.author}</Text>
+          <Text style={[styles.repoName, { color: theme.colors.textSecondary }]}>{contribution.repoName}</Text>
         </View>
-        <Text style={styles.timeAgo}>{timeAgo}</Text>
+        <Text style={[styles.timeAgo, { color: theme.colors.textSecondary }]}>{timeAgo}</Text>
       </View>
 
-      <Text style={styles.message}>{contribution.message}</Text>
+      <Text style={[styles.message, { color: theme.colors.text }]}>{contribution.message}</Text>
     </Card>
   );
 }
@@ -68,15 +70,12 @@ const styles = StyleSheet.create({
   author: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: '#003366',
   },
   repoName: {
     fontSize: 14,
-    color: '#666',
   },
   timeAgo: {
     fontSize: 12,
-    color: '#999',
   },
   message: {
     fontSize: 15,

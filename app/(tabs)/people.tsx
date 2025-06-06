@@ -1,66 +1,49 @@
-import { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Text } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, FlatList, StyleSheet, Text, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
 import { github } from '../../lib/github';
 import ContributorCard from '../../components/ContributorCard';
 import ContributionCard from '../../components/ContributionCard';
-import SearchBar from '../../components/SearchBar'; // Import the SearchBar component
+import SearchBar from '../../components/SearchBar';
 import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../lib/theme'; // Add this import
 
 export default function ContributorSearchScreen() {
   const [query, setQuery] = useState('');
   const [contributors, setContributors] = useState<any[]>([]);
-  const [contributions, setContributions] = useState<any[]>([]);
+  const [topContributors, setTopContributors] = useState<any[]>([]);
+  const [recentContributions, setRecentContributions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Add theme hook
+  const { theme } = useTheme();
 
   useEffect(() => {
     async function getUserId() {
       const { data } = await supabase.auth.getUser();
-      const id = data?.user?.id ?? null;
-      setUserId(id);
+      setUserId(data?.user?.id ?? null);
     }
-
     getUserId();
   }, []);
 
-  // Use useFocusEffect to refresh the feed when tab is focused
   useFocusEffect(
     useCallback(() => {
-      async function refreshOnFocus() {
-        if (query.trim().length === 0) {
-          // Clear current data to force refresh
-          setContributions([]);
-          setContributors([]);
-          
-          // Get fresh userId on each focus
-          const { data } = await supabase.auth.getUser();
-          const currentUserId = data?.user?.id ?? null;
-          
-          if (currentUserId) {
-            await loadFollowedContributions(currentUserId);
-          }
-        }
+      if (!query.trim() && userId) {
+        loadFollowedData(userId);
       }
-      
-      refreshOnFocus();
-    }, [query]) // Remove userId dependency to avoid stale closure
+    }, [query, userId])
   );
 
   useEffect(() => {
-    const delayDebounce = setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (query.trim().length > 1) {
         searchContributors();
       } else if (userId) {
-        loadFollowedContributions(userId);
-      } else {
-        setContributors([]);
-        setContributions([]);
+        loadFollowedData(userId);
       }
     }, 400);
-
-    return () => clearTimeout(delayDebounce);
+    return () => clearTimeout(timeout);
   }, [query]);
 
   async function searchContributors() {
@@ -71,7 +54,8 @@ export default function ContributorSearchScreen() {
         results.map((u) => github.getContributorStats(u.username))
       );
       setContributors(enriched);
-      setContributions([]); // Clear feed when searching
+      setTopContributors([]);
+      setRecentContributions([]);
     } catch (err) {
       console.error('Search failed:', err);
     } finally {
@@ -79,59 +63,74 @@ export default function ContributorSearchScreen() {
     }
   }
 
-  async function loadFollowedContributions(userId: string) {
+  async function loadFollowedData(userId: string) {
     setLoading(true);
-    try {      
+    try {
       const { data, error } = await supabase
         .from('follows')
         .select('username')
         .eq('user_id', userId);
 
-      if (error) {
-        console.error('Error fetching followed contributors:', error.message);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        setContributions([]);
-        setContributors([]);
+      if (error || !data || data.length === 0) {
+        setTopContributors([]);
+        setRecentContributions([]);
         return;
       }
 
       const usernames = data.map((row) => row.username);
-      
-      // Add detailed logging for each user's contributions
+      const userStats = [];
       const allContributions = [];
+
       for (const username of usernames) {
         try {
-          const userContributions = await github.getRecentContributions(username);
-          allContributions.push(...userContributions);
+          const stats = await github.getContributorStats(username);
+          const recent = await github.getRecentContributions(username);
+          if (stats) userStats.push({ ...stats, username });
+          if (recent) allContributions.push(...recent);
         } catch (err) {
-          console.error(`Error fetching contributions for ${username}:`, err);
+          console.error(`Failed for ${username}:`, err);
         }
       }
-      
-      // Sort contributions by timestamp (most recent first)
-      const sorted = allContributions.sort((a, b) => {
-        const dateA = new Date(a.timestamp);
-        const dateB = new Date(b.timestamp);
-        
-        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-          console.warn('Invalid date found in contributions:', a.timestamp, b.timestamp);
-          return 0;
-        }
-        
-        return dateB.getTime() - dateA.getTime();
-      });
-      
-      setContributions(sorted);
-      setContributors([]);
+
+      const sortedTop = userStats
+        .sort((a, b) => b.totalCommitsLastMonth - a.totalCommitsLastMonth)
+        .slice(0, 3);
+
+      const sortedRecent = allContributions
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 10);
+
+      setTopContributors(sortedTop);
+      setRecentContributions(sortedRecent);
     } catch (err) {
-      console.error('Loading contributions failed:', err);
+      console.error('Loading followed data failed:', err);
     } finally {
       setLoading(false);
     }
   }
+
+  // Create dynamic styles that use theme colors
+  const styles = StyleSheet.create({
+    container: { 
+      flex: 1, 
+      padding: 16, 
+      backgroundColor: theme.colors.background 
+    },
+    searchBar: { 
+      marginBottom: 12 
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginVertical: 12,
+      color: theme.colors.text, // Use theme text color
+    },
+    empty: {
+      textAlign: 'center',
+      color: theme.colors.textSecondary || theme.colors.text,
+      marginVertical: 16,
+    },
+  });
 
   return (
     <View style={styles.container}>
@@ -142,50 +141,37 @@ export default function ContributorSearchScreen() {
         style={styles.searchBar}
       />
 
-      <FlatList
-        data={query.length > 1 ? contributors : contributions}
-        keyExtractor={(item, index) =>
-          query.length > 1 ? item.username : item.timestamp + index
-        }
-        renderItem={({ item }) =>
-          query.length > 1 ? (
-            <ContributorCard contributor={item} />
+      {query.length > 1 ? (
+        <FlatList
+          data={contributors}
+          keyExtractor={(item) => item.username}
+          renderItem={({ item }) => <ContributorCard contributor={item} />}
+          refreshing={loading}
+          onRefresh={() => userId && loadFollowedData(userId)}
+          // Add theme-aware list styling
+          style={{ backgroundColor: theme.colors.background }}
+        />
+      ) : (
+        <ScrollView style={{ backgroundColor: theme.colors.background }}>
+          <Text style={styles.sectionTitle}>Top Contributors You Follow</Text>
+          {topContributors.length === 0 ? (
+            <Text style={styles.empty}>No contributors yet</Text>
           ) : (
-            <ContributionCard contribution={item} />
-          )
-        }
-        ListEmptyComponent={
-          !loading && (query.length > 1 || contributions.length === 0) ? (
-            <Text style={styles.empty}>
-              {query.length > 1 ? 'No users found' : 'No recent activity'}
-            </Text>
-          ) : null
-        }
-        refreshing={loading}
-        onRefresh={() => {
-          if (query.trim().length === 0) {
-            // Get fresh userId for manual refresh
-            supabase.auth.getUser().then(({ data }) => {
-              const currentUserId = data?.user?.id ?? null;
-              if (currentUserId) {
-                loadFollowedContributions(currentUserId);
-              }
-            });
-          }
-        }}
-      />
+            topContributors.map((user) => (
+              <ContributorCard key={user.username} contributor={user} />
+            ))
+          )}
+
+          <Text style={styles.sectionTitle}>Recent Contributions</Text>
+          {recentContributions.length === 0 ? (
+            <Text style={styles.empty}>No recent activity</Text>
+          ) : (
+            recentContributions.map((contribution, index) => (
+              <ContributionCard key={contribution.timestamp + index} contribution={contribution} />
+            ))
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  searchBar: {
-    margin: 0,
-  },
-  empty: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 20,
-  },
-});

@@ -12,6 +12,7 @@ import { useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { github } from '../../lib/github';
 import RepoUpdateCard from '../../components/RepoUpdateCard';
+import { useTheme } from '../../lib/theme'; // Add theme import
 import type { RepoUpdate, HomeStats } from '../../lib/github';
 
 export default function HomeScreen() {
@@ -25,6 +26,9 @@ export default function HomeScreen() {
     mostStarred: null,
   });
   const [mostActiveRepo, setMostActiveRepo] = useState<RepoUpdate | null>(null);
+
+  // Add theme hook
+  const { theme, isDark } = useTheme();
 
   // Use useFocusEffect to reload data when tab becomes focused
   useFocusEffect(
@@ -99,6 +103,112 @@ export default function HomeScreen() {
     }
   }
 
+  // Create dynamic styles that use theme colors
+  const styles = StyleSheet.create({
+    container: { 
+      flex: 1, 
+      backgroundColor: theme.colors.background, 
+      padding: 16 
+    },
+    header: { 
+      fontSize: 22, 
+      fontWeight: 'bold',
+      color: theme.colors.text,
+    },
+    subheader: { 
+      fontSize: 16, 
+      color: theme.colors.textSecondary || theme.colors.text, 
+      marginBottom: 16,
+      opacity: 0.7,
+    },
+    card: {
+      backgroundColor: theme.colors.card || theme.colors.surface,
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 12,
+      shadowColor: isDark ? theme.colors.text : '#000',
+      shadowOpacity: isDark ? 0.3 : 0.05,
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 6,
+      elevation: 2,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: theme.colors.border || 'transparent',
+    },
+    cardTitle: { 
+      fontWeight: 'bold', 
+      fontSize: 16, 
+      marginBottom: 4,
+      color: theme.colors.text,
+    },
+    repoName: { 
+      fontSize: 18, 
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    cardInfo: { 
+      fontSize: 14, 
+      color: theme.colors.textSecondary || theme.colors.text,
+      opacity: 0.8,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    statBox: {
+      flex: 1,
+      marginHorizontal: 4,
+      backgroundColor: theme.colors.card || theme.colors.surface,
+      padding: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+      elevation: isDark ? 0 : 1,
+      shadowColor: isDark ? 'transparent' : '#000',
+      shadowOpacity: isDark ? 0 : 0.05,
+      shadowOffset: { width: 0, height: 1 },
+      shadowRadius: 3,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: theme.colors.border || 'transparent',
+    },
+    statBoxWide: {
+      backgroundColor: theme.colors.card || theme.colors.surface,
+      padding: 12,
+      borderRadius: 10,
+      marginHorizontal: 4,
+      alignItems: 'center',
+      marginBottom: 10,
+      elevation: isDark ? 0 : 1,
+      shadowColor: isDark ? 'transparent' : '#000',
+      shadowOpacity: isDark ? 0 : 0.05,
+      shadowOffset: { width: 0, height: 1 },
+      shadowRadius: 3,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: theme.colors.border || 'transparent',
+    },
+    statNumber: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.colors.text,
+    },
+    statLabel: {
+      fontSize: 14,
+      color: theme.colors.textSecondary || theme.colors.text,
+      opacity: 0.7,
+    },
+    sectionTitle: { 
+      fontSize: 18, 
+      fontWeight: '600', 
+      marginBottom: 8,
+      color: theme.colors.text,
+    },
+    emptyText: { 
+      textAlign: 'center', 
+      marginTop: 20, 
+      color: theme.colors.textSecondary || theme.colors.text,
+      opacity: 0.6,
+    },
+  });
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>👋 Welcome back!</Text>
@@ -149,17 +259,23 @@ export default function HomeScreen() {
 
       <Text style={styles.sectionTitle}>🗞 Recent Updates</Text>
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 20 }} size="large" />
+        <ActivityIndicator 
+          style={{ marginTop: 20 }} 
+          size="large" 
+          color={theme.colors.primary}
+        />
       ) : (
         <FlatList
           data={repoUpdates}
           keyExtractor={(item, index) => `${item.repo.name}-${item.action}-${item.timestamp}-${index}`}
           renderItem={({ item }) => <RepoUpdateCard update={item} />}
+          style={{ backgroundColor: theme.colors.background }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#007AFF']}
+              colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
             />
           }
           ListEmptyComponent={
@@ -175,56 +291,3 @@ export default function HomeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
-  header: { fontSize: 22, fontWeight: 'bold' },
-  subheader: { fontSize: 16, color: '#666', marginBottom: 16 },
-  card: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  cardTitle: { fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
-  repoName: { fontSize: 18, fontWeight: '600' },
-  cardInfo: { fontSize: 14, color: '#555' },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  statBox: {
-    flex: 1,
-    marginHorizontal: 4,
-    backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    elevation: 1,
-  },
-  statBoxWide: {
-    backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 10,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    marginBottom: 10,
-    elevation: 1,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  emptyText: { textAlign: 'center', marginTop: 20, color: '#999' },
-});

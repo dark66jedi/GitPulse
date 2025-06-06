@@ -1,5 +1,6 @@
 import { View, Text, Image, StyleSheet, Linking, TouchableOpacity } from 'react-native';
 import type { RepoUpdate } from '../lib/github';
+import { useTheme } from '../lib/theme';
 import Card from './Card'; // Adjust the import path as needed
 
 type Props = {
@@ -7,6 +8,7 @@ type Props = {
 };
 
 export default function RepoUpdateCard({ update }: Props) {
+  const { theme } = useTheme();
   const { repo, action, actor, message, timestamp } = update;
 
   const actionText =
@@ -28,17 +30,19 @@ export default function RepoUpdateCard({ update }: Props) {
 
   return (
     <Card onPress={handleOpenRepo}>
-      <Text style={styles.repoName}>{repo.name}</Text>
+      <Text style={[styles.repoName, { color: theme.colors.text }]}>{repo.name}</Text>
       <View style={styles.row}>
         <TouchableOpacity onPress={handleOpenProfile}>
           <Image source={{ uri: actor.avatarUrl }} style={styles.avatar} />
         </TouchableOpacity>
-        <Text style={styles.description}>
-          <Text style={styles.username}>{actor.username}</Text> {actionText} this repo
+        <Text style={[styles.description, { color: theme.colors.text }]}>
+          <Text style={[styles.username, { color: theme.colors.primary }]}>{actor.username}</Text> {actionText} this repo
         </Text>
       </View>
-      {message ? <Text style={styles.message}>"{message}"</Text> : null}
-      <Text style={styles.timestamp}>{new Date(timestamp).toLocaleString()}</Text>
+      {message ? (
+        <Text style={[styles.message, { color: theme.colors.textSecondary }]}>"{message}"</Text>
+      ) : null}
+      <Text style={[styles.timestamp, { color: theme.colors.textSecondary }]}>{new Date(timestamp).toLocaleString()}</Text>
     </Card>
   );
 }
@@ -70,11 +74,11 @@ const styles = StyleSheet.create({
   message: {
     fontStyle: 'italic',
     marginTop: 6,
-    color: '#333',
+    // Removed static color
   },
   timestamp: {
     marginTop: 6,
-    color: '#666',
     fontSize: 12,
+    // Removed static color
   },
 });

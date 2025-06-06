@@ -3,9 +3,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { TouchableOpacity, Alert, View, Image, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../lib/theme';
+import { ThemeToggle } from '../../components/ThemeToggle';
 
 export default function TabsLayout() {
   const router = useRouter();
+  const { theme } = useTheme();
 
   async function handleLogout() {
     try {
@@ -18,20 +21,42 @@ export default function TabsLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: "#007AFF",
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.text + '80', // Add opacity
+          tabBarStyle: {
+            backgroundColor: theme.colors.tabBarBackground,
+            borderTopColor: theme.colors.border,
+          },
+          headerStyle: {
+            backgroundColor: theme.colors.headerBackground,
+          },
+          headerTintColor: theme.colors.text,
+          headerShadowVisible: true,
           headerTitle: () => (
             <Image
               source={require('../../assets/images/horizontal_icon.png')}
-              style={{ width: 140, height: 40, resizeMode: 'contain' }}
+              style={styles.headerImage}
             />
           ),
           headerRight: () => (
-            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 16 }}>
-              <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-            </TouchableOpacity>
+            <View style={styles.headerRightContainer}>
+              <ThemeToggle />
+              <TouchableOpacity 
+                onPress={handleLogout} 
+                style={styles.logoutButton}
+                accessibilityLabel="Logout"
+                accessibilityHint="Tap to sign out of your account"
+              >
+                <Ionicons 
+                  name="log-out-outline" 
+                  size={24} 
+                  color={theme.colors.primary} 
+                />
+              </TouchableOpacity>
+            </View>
           ),
         }}
       >
@@ -54,6 +79,7 @@ export default function TabsLayout() {
             ),
           }}
         />
+        
         <Tabs.Screen
           name="repos"
           options={{
@@ -69,13 +95,29 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  headerImage: {
+    width: 140,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  logoutButton: {
+    padding: 4,
+  },
   footer: {
     position: 'absolute',
     bottom: 10,
     left: 0,
     right: 0,
     alignItems: 'center',
-    pointerEvents: 'none', // make it non-interactive
+    pointerEvents: 'none',
   },
   footerImage: {
     width: 100,

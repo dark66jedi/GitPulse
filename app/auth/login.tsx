@@ -1,7 +1,7 @@
 import { View, Text, Button, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { theme } from '../../lib/theme';
 import { FontAwesome } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../lib/theme';
 import * as AuthSession from 'expo-auth-session';
 
 const redirectTo = AuthSession.makeRedirectUri({
@@ -18,18 +18,23 @@ const signInWithGitHub = async () => {
 };
 
 export default function LoginScreen() {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Image
         source={require('../../assets/images/icon.png')}
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.title}>Login</Text>
+      <Text style={[styles.title, { color: theme.colors.text }]}>Login</Text>
 
-      <TouchableOpacity style={styles.githubButton} onPress={signInWithGitHub}>
-        <FontAwesome name="github" size={24} color="white" style={{ marginRight: 10 }} />
-        <Text style={styles.buttonText}>Sign in with GitHub</Text>
+      <TouchableOpacity 
+        style={[styles.githubButton, { backgroundColor: theme.colors.primary }]} 
+        onPress={signInWithGitHub}
+      >
+        <FontAwesome name="github" size={24} color={theme.colors.background} style={{ marginRight: 10 }} />
+        <Text style={[styles.buttonText, { color: theme.colors.background }]}>Sign in with GitHub</Text>
       </TouchableOpacity>
     </View>
   );
@@ -38,7 +43,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
     padding: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -51,19 +55,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: theme.colors.text,
     marginBottom: 32,
   },
   githubButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
-    color: theme.colors.text,
     fontSize: 16,
+    fontWeight: '600',
   },
 });

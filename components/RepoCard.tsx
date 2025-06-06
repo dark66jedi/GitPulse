@@ -4,10 +4,12 @@ import { FontAwesome } from '@expo/vector-icons';
 import { github } from '../lib/github';
 import { supabase } from '../lib/supabase';
 import { addBookmark, removeBookmark, isBookmarked } from '../lib/bookmarks';
+import { useTheme } from '../lib/theme';
 import type { Repository } from '../lib/github';
 import Card from './Card'; // Adjust the import path as needed
 
 export default function RepoCard({ url }: { url: string }) {
+  const { theme } = useTheme();
   const [userId, setUserId] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
   const [repo, setRepo] = useState<Repository | null>(null);
@@ -58,7 +60,9 @@ export default function RepoCard({ url }: { url: string }) {
     }
   }
 
-  if (!repo || loading) return <Text>Loading...</Text>;
+  if (!repo || loading) {
+    return <Text style={{ color: theme.colors.text }}>Loading...</Text>;
+  }
 
   const formatDate = (date: string | null) => {
     if (!date) return 'Unknown';
@@ -71,20 +75,20 @@ export default function RepoCard({ url }: { url: string }) {
   return (
     <Card style={styles.cardOverride}>
       <View style={styles.header}>
-        <Text style={styles.title}>{repo.name}</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>{repo.name}</Text>
         <Pressable onPress={handleBookmark}>
           <FontAwesome
             name={bookmarked ? 'bookmark' : 'bookmark-o'}
             size={20}
-            color="#003366"
+            color={theme.colors.primary}
           />
         </Pressable>
       </View>
-      <Text style={styles.owner}>{repo.owner.login}</Text>
-      <Text style={styles.description}>{repo.description}</Text>
-      <Text>⭐ {repo.stargazers_count}</Text>
-      <Text>⏱ {repo.totalCommits} commits</Text>
-      <Text>🕒 Last commit: {formatDate(repo.lastCommitDate)}</Text>
+      <Text style={[styles.owner, { color: theme.colors.textSecondary }]}>{repo.owner.login}</Text>
+      <Text style={[styles.description, { color: theme.colors.text }]}>{repo.description}</Text>
+      <Text style={{ color: theme.colors.text }}>⭐ {repo.stargazers_count}</Text>
+      <Text style={{ color: theme.colors.text }}>⏱ {repo.totalCommits} commits</Text>
+      <Text style={{ color: theme.colors.text }}>🕒 Last commit: {formatDate(repo.lastCommitDate)}</Text>
     </Card>
   );
 }
@@ -103,9 +107,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flex: 1,
     marginRight: 8,
-  },
-  owner: {
-    color: '#666',
   },
   description: {
     marginTop: 8,
