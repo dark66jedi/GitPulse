@@ -84,7 +84,7 @@ export default function RepoCard({ url }: { url: string }) {
           />
         </Pressable>
       </View>
-      <Text style={[styles.owner, { color: theme.colors.textSecondary }]}>{repo.owner.login}</Text>
+      <Text style={[{ color: theme.colors.textSecondary }]}>{repo.owner.login}</Text>
       <Text style={[styles.description, { color: theme.colors.text }]}>{repo.description}</Text>
       <Text style={{ color: theme.colors.text }}>⭐ {repo.stargazers_count}</Text>
       <Text style={{ color: theme.colors.text }}>⏱ {repo.totalCommits} commits</Text>

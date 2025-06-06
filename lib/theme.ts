@@ -6,38 +6,38 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const lightTheme = {
   colors: {
     // Core colors
-    background: '#fafafa',
+    background: '#f8fafc',
     surface: '#ffffff',
-    surfaceVariant: '#f5f5f7',
-    surfaceContainer: '#f1f3f4',
+    surfaceVariant: '#f1f5f9',
+    surfaceContainer: '#e2e8f0',
     
-    // Primary palette
-    primary: '#4f46e5',
-    primaryContainer: '#e0e7ff',
+    // Primary palette (GitPulse main blue)
+    primary: '#1e40af',
+    primaryContainer: '#dbeafe',
     onPrimary: '#ffffff',
-    onPrimaryContainer: '#1e1b4b',
+    onPrimaryContainer: '#1e3a8a',
     
-    // Secondary palette
-    secondary: '#06b6d4',
-    secondaryContainer: '#cffafe',
+    // Secondary palette (GitPulse light blue)
+    secondary: '#0ea5e9',
+    secondaryContainer: '#e0f2fe',
     onSecondary: '#ffffff',
     onSecondaryContainer: '#0c4a6e',
     
-    // Accent/Tertiary
-    accent: '#10b981',
-    accentContainer: '#d1fae5',
+    // Accent/Tertiary (complementary blue-cyan)
+    accent: '#06b6d4',
+    accentContainer: '#cffafe',
     
     // Text hierarchy
-    text: '#0f172a',
-    textSecondary: '#64748b',
-    textTertiary: '#94a3b8',
+    text: '#1e293b',
+    textSecondary: '#475569',
+    textTertiary: '#64748b',
     onSurface: '#1e293b',
     onSurfaceVariant: '#475569',
     
     // Interactive states
     inputBackground: '#f8fafc',
-    inputBorder: '#e2e8f0',
-    inputBorderFocused: '#4f46e5',
+    inputBorder: '#cbd5e1',
+    inputBorderFocused: '#1e40af',
     
     // Structural elements
     border: '#e2e8f0',
@@ -50,11 +50,11 @@ export const lightTheme = {
     cardBackground: '#ffffff',
     
     // Status colors
-    success: '#10b981',
-    successContainer: '#dcfce7',
-    warning: '#f59e0b',
-    warningContainer: '#fef3c7',
-    error: '#ef4444',
+    success: '#059669',
+    successContainer: '#d1fae5',
+    warning: '#d97706',
+    warningContainer: '#fed7aa',
+    error: '#dc2626',
     errorContainer: '#fee2e2',
     
     // Overlays
@@ -75,21 +75,21 @@ export const darkTheme = {
     surfaceVariant: '#334155',
     surfaceContainer: '#475569',
     
-    // Primary palette
-    primary: '#6366f1',
-    primaryContainer: '#3730a3',
+    // Primary palette (GitPulse main blue - brighter for dark mode)
+    primary: '#3b82f6',
+    primaryContainer: '#1e3a8a',
     onPrimary: '#ffffff',
-    onPrimaryContainer: '#e0e7ff',
+    onPrimaryContainer: '#dbeafe',
     
-    // Secondary palette
-    secondary: '#22d3ee',
-    secondaryContainer: '#0891b2',
+    // Secondary palette (GitPulse light blue - adjusted for dark)
+    secondary: '#38bdf8',
+    secondaryContainer: '#0369a1',
     onSecondary: '#0c4a6e',
-    onSecondaryContainer: '#cffafe',
+    onSecondaryContainer: '#e0f2fe',
     
     // Accent/Tertiary
-    accent: '#34d399',
-    accentContainer: '#059669',
+    accent: '#22d3ee',
+    accentContainer: '#0891b2',
     
     // Text hierarchy
     text: '#f8fafc',
@@ -101,7 +101,7 @@ export const darkTheme = {
     // Interactive states
     inputBackground: '#334155',
     inputBorder: '#475569',
-    inputBorderFocused: '#6366f1',
+    inputBorderFocused: '#3b82f6',
     
     // Structural elements
     border: '#475569',
@@ -114,9 +114,9 @@ export const darkTheme = {
     cardBackground: '#1e293b',
     
     // Status colors
-    success: '#34d399',
+    success: '#10b981',
     successContainer: '#064e3b',
-    warning: '#fbbf24',
+    warning: '#f59e0b',
     warningContainer: '#92400e',
     error: '#f87171',
     errorContainer: '#991b1b',

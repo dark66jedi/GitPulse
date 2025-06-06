@@ -8,7 +8,7 @@ import { ThemeToggle } from '../../components/ThemeToggle';
 
 export default function TabsLayout() {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   async function handleLogout() {
     try {
@@ -25,7 +25,7 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.text + '80', // Add opacity
+          tabBarInactiveTintColor: theme.colors.text + '80',
           tabBarStyle: {
             backgroundColor: theme.colors.tabBarBackground,
             borderTopColor: theme.colors.border,
@@ -37,7 +37,10 @@ export default function TabsLayout() {
           headerShadowVisible: true,
           headerTitle: () => (
             <Image
-              source={require('../../assets/images/horizontal_icon.png')}
+              source={isDark 
+                ? require('../../assets/images/horizontal_icon_white.png')
+                : require('../../assets/images/horizontal_icon.png')
+              }
               style={styles.headerImage}
             />
           ),
