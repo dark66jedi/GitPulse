@@ -14,6 +14,21 @@ export type Repository = {
   lastCommitDate: string | null;
 };
 
+export type RepoMeta = {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+  };
+  stargazers_count: number;
+  forks_count: number;
+  watchers_count: number;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type RepoUpdate = {
   id: string;
   repo: {
@@ -29,7 +44,6 @@ export type RepoUpdate = {
   message?: string;
   timestamp: string;
 };
-
 
 export type Contribution = {
   repoName: string;
@@ -49,6 +63,13 @@ export type ContributorStats = {
     name: string;
     commits: number;
   }[];
+};
+
+export type HomeStats = {
+  total: number;
+  recentActivityCount: number;
+  followsCount: number;
+  mostStarred: { repo: string; stars: number } | null;
 };
 
 async function fetchFromGitHub<T>(endpoint: string): Promise<T> {
@@ -106,6 +127,142 @@ async function getRepoDetailsByUrl(url: string): Promise<Repository> {
     totalCommits,
     lastCommitDate,
   };
+}
+
+// New function: Get basic repo metadata (lighter than getRepoDetailsByUrl)
+async function getRepoMeta(owner: string, repo: string): Promise<RepoMeta> {
+  try {
+    const repoData = await fetchFromGitHub<RepoMeta>(`/repos/${owner}/${repo}`);
+    return repoData;
+  } catch (error) {
+    console.error(`Error fetching repo meta for ${owner}/${repo}:`, error);
+    throw error;
+  }
+}
+
+// New function: Get home page stats efficiently
+async function getHomeStats(bookmarkUrls: string[], followsCount: number): Promise<HomeStats> {
+  try {
+    console.log('Calculating home stats for URLs:', bookmarkUrls);
+    
+    if (bookmarkUrls.length === 0) {
+      return {
+        total: 0,
+        recentActivityCount: 0,
+        followsCount,
+        mostStarred: null,
+      };
+    }
+
+    // Get all repo updates in parallel
+    const updatesPromises = bookmarkUrls.map(async (url) => {
+      const path = new URL(url).pathname;
+      const [, owner, repo] = path.split('/');
+      try {
+        return await getRepoUpdates(owner, repo);
+      } catch (error) {
+        console.error(`Error getting updates for ${owner}/${repo}:`, error);
+        return [];
+      }
+    });
+
+    const allUpdates = await Promise.all(updatesPromises);
+    const flatUpdates = allUpdates.flat();
+
+    // Count today's activity
+    const today = new Date().toISOString().split('T')[0];
+    const recentActivityCount = flatUpdates.filter((update) => 
+      update.timestamp.startsWith(today)
+    ).length;
+
+    // Find most starred repo
+    const mostStarred = await getMostStarredRepo(bookmarkUrls);
+
+    return {
+      total: bookmarkUrls.length,
+      recentActivityCount,
+      followsCount,
+      mostStarred,
+    };
+  } catch (error) {
+    console.error('Error calculating home stats:', error);
+    return {
+      total: bookmarkUrls.length,
+      recentActivityCount: 0,
+      followsCount,
+      mostStarred: null,
+    };
+  }
+}
+
+// New function: Get most starred repo from a list of URLs
+async function getMostStarredRepo(urls: string[]): Promise<{ repo: string; stars: number } | null> {
+  if (urls.length === 0) return null;
+  
+  let topRepo = null;
+  let maxStars = -1;
+
+  console.log('Finding most starred repo from:', urls);
+
+  // Process repos in parallel with error handling
+  const repoPromises = urls.map(async (url) => {
+    try {
+      const path = new URL(url).pathname;
+      const [, owner, repo] = path.split('/');
+      
+      if (!owner || !repo) {
+        console.warn('Invalid URL format:', url);
+        return null;
+      }
+
+      const data = await getRepoMeta(owner, repo);
+      return {
+        repoName: `${owner}/${repo}`,
+        stars: data.stargazers_count,
+      };
+    } catch (error) {
+      console.error(`Error getting stars for ${url}:`, error);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(repoPromises);
+  
+  // Find the repo with most stars
+  for (const result of results) {
+    if (result && result.stars > maxStars) {
+      maxStars = result.stars;
+      topRepo = result.repoName;
+    }
+  }
+
+  return topRepo ? { repo: topRepo, stars: maxStars } : null;
+}
+
+// New function: Get all repo updates for bookmarked repos
+async function getAllBookmarkedRepoUpdates(urls: string[]): Promise<RepoUpdate[]> {
+  if (urls.length === 0) return [];
+
+  console.log('Loading updates for bookmarked repos:', urls);
+
+  const updatesPromises = urls.map(async (url) => {
+    const path = new URL(url).pathname;
+    const [, owner, repo] = path.split('/');
+    try {
+      return await getRepoUpdates(owner, repo);
+    } catch (error) {
+      console.error(`Error loading updates for ${owner}/${repo}:`, error);
+      return [];
+    }
+  });
+
+  const allUpdates = await Promise.all(updatesPromises);
+  const flatUpdates = allUpdates.flat();
+
+  // Sort by timestamp (most recent first)
+  return flatUpdates.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 }
 
 async function getUserContributions(username: string): Promise<Contribution[]> {
@@ -171,7 +328,6 @@ async function getContributorStats(username: string): Promise<ContributorStats> 
     topRepos: activeRepos,
   };
 }
-
 
 async function searchUsersByUsername(query: string) {
   if (!query) return [];
@@ -244,62 +400,66 @@ async function getRepoUpdates(owner: string, repo: string): Promise<RepoUpdate[]
   const repoFullName = `${owner}/${repo}`;
   const repoUrl = `https://github.com/${repoFullName}`;
 
-  // 🟡 Commits
-  const commits = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/commits?per_page=5`);
-  for (const commit of commits) {
-    updates.push({
-      id: `${repoFullName}-commit-${commit.sha}`,
-      repo: {
-        name: repoFullName,
-        url: repoUrl,
-      },
-      action: 'commit',
-      actor: {
-        username: commit.author?.login ?? 'unknown',
-        avatarUrl: commit.author?.avatar_url ?? '',
-        profileUrl: commit.author?.html_url ?? '',
-      },
-      message: commit.commit.message,
-      timestamp: commit.commit.author.date,
-    });
-  }
+  try {
+    // 🟡 Commits
+    const commits = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/commits?per_page=5`);
+    for (const commit of commits) {
+      updates.push({
+        id: `${repoFullName}-commit-${commit.sha}`,
+        repo: {
+          name: repoFullName,
+          url: repoUrl,
+        },
+        action: 'commit',
+        actor: {
+          username: commit.author?.login ?? 'unknown',
+          avatarUrl: commit.author?.avatar_url ?? '',
+          profileUrl: commit.author?.html_url ?? '',
+        },
+        message: commit.commit.message,
+        timestamp: commit.commit.author.date,
+      });
+    }
 
-  // 🟡 Stargazers (note: GitHub does not return star timestamps via REST API)
-  const stargazers = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/stargazers?per_page=5`);
-  for (const user of stargazers) {
-    updates.push({
-      id: `${repoFullName}-star-${user.id}`,
-      repo: {
-        name: repoFullName,
-        url: repoUrl,
-      },
-      action: 'star',
-      actor: {
-        username: user.login,
-        avatarUrl: user.avatar_url,
-        profileUrl: user.html_url,
-      },
-      timestamp: new Date().toISOString(), // Placeholder
-    });
-  }
+    // 🟡 Stargazers (note: GitHub does not return star timestamps via REST API)
+    const stargazers = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/stargazers?per_page=3`);
+    for (const user of stargazers) {
+      updates.push({
+        id: `${repoFullName}-star-${user.id}`,
+        repo: {
+          name: repoFullName,
+          url: repoUrl,
+        },
+        action: 'star',
+        actor: {
+          username: user.login,
+          avatarUrl: user.avatar_url,
+          profileUrl: user.html_url,
+        },
+        timestamp: new Date().toISOString(), // Placeholder
+      });
+    }
 
-  // 🟡 Forks
-  const forks = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/forks?per_page=5`);
-  for (const fork of forks) {
-    updates.push({
-      id: `${repoFullName}-fork-${fork.id}`,
-      repo: {
-        name: repoFullName,
-        url: repoUrl,
-      },
-      action: 'fork',
-      actor: {
-        username: fork.owner.login,
-        avatarUrl: fork.owner.avatar_url,
-        profileUrl: fork.owner.html_url,
-      },
-      timestamp: fork.created_at,
-    });
+    // 🟡 Forks
+    const forks = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/forks?per_page=3`);
+    for (const fork of forks) {
+      updates.push({
+        id: `${repoFullName}-fork-${fork.id}`,
+        repo: {
+          name: repoFullName,
+          url: repoUrl,
+        },
+        action: 'fork',
+        actor: {
+          username: fork.owner.login,
+          avatarUrl: fork.owner.avatar_url,
+          profileUrl: fork.owner.html_url,
+        },
+        timestamp: fork.created_at,
+      });
+    }
+  } catch (error) {
+    console.error(`Error fetching updates for ${owner}/${repo}:`, error);
   }
 
   // ⏳ Sort by timestamp (most recent first)
@@ -308,11 +468,15 @@ async function getRepoUpdates(owner: string, repo: string): Promise<RepoUpdate[]
 
 export const github = {
   getRepoDetailsByUrl,
+  getRepoMeta,
   getUserContributions,
   getContributorStats,
   searchUsersByUsername,
   getRecentContributions,
   getTopStarredRepos,
   getTrendingReposLast30Days,
-  getRepoUpdates
+  getRepoUpdates,
+  getHomeStats,
+  getMostStarredRepo,
+  getAllBookmarkedRepoUpdates,
 };
