@@ -6,9 +6,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
-  TextInput,
 } from 'react-native';
 import RepoCard from '../../components/RepoCard';
+import SearchBar from '../../components/SearchBar';
 import { github } from '../../lib/github';
 
 type ViewMode = 'top' | 'trending';
@@ -78,12 +78,10 @@ export default function TopReposScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <TextInput
-        style={styles.input}
+      <SearchBar
         value={query}
         onChangeText={setQuery}
         placeholder="Search repositories..."
-        returnKeyType="search"
       />
 
       {renderTabs()}
@@ -145,13 +143,6 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: 'white',
     fontWeight: 'bold',
-  },
-  input: {
-    margin: 16,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: 'white',
-    fontSize: 16,
   },
   emptyText: {
     textAlign: 'center',

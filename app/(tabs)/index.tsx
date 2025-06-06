@@ -35,9 +35,7 @@ export default function HomeScreen() {
 
   async function loadAllData() {
     setLoading(true);
-    try {
-      console.log('Loading all home screen data...');
-      
+    try {      
       // Fetch bookmarks and follows from Supabase
       const [bookmarksResult, followsResult] = await Promise.all([
         supabase.from('bookmarks').select('repo_url'),
@@ -57,17 +55,11 @@ export default function HomeScreen() {
       const bookmarkUrls = (bookmarksResult.data || []).map((b: any) => b.repo_url);
       const followsCount = followsResult.data?.length || 0;
 
-      console.log('Found bookmark URLs:', bookmarkUrls);
-      console.log('Follows count:', followsCount);
-
       // Use optimized GitHub API functions
       const [stats, updates] = await Promise.all([
         github.getHomeStats(bookmarkUrls, followsCount),
         github.getAllBookmarkedRepoUpdates(bookmarkUrls),
       ]);
-
-      console.log('Loaded stats:', stats);
-      console.log('Loaded updates count:', updates.length);
 
       // Update state
       setHomeStats(stats);

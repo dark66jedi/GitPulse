@@ -142,9 +142,7 @@ async function getRepoMeta(owner: string, repo: string): Promise<RepoMeta> {
 
 // New function: Get home page stats efficiently
 async function getHomeStats(bookmarkUrls: string[], followsCount: number): Promise<HomeStats> {
-  try {
-    console.log('Calculating home stats for URLs:', bookmarkUrls);
-    
+  try {    
     if (bookmarkUrls.length === 0) {
       return {
         total: 0,
@@ -202,8 +200,6 @@ async function getMostStarredRepo(urls: string[]): Promise<{ repo: string; stars
   let topRepo = null;
   let maxStars = -1;
 
-  console.log('Finding most starred repo from:', urls);
-
   // Process repos in parallel with error handling
   const repoPromises = urls.map(async (url) => {
     try {
@@ -242,8 +238,6 @@ async function getMostStarredRepo(urls: string[]): Promise<{ repo: string; stars
 // New function: Get all repo updates for bookmarked repos
 async function getAllBookmarkedRepoUpdates(urls: string[]): Promise<RepoUpdate[]> {
   if (urls.length === 0) return [];
-
-  console.log('Loading updates for bookmarked repos:', urls);
 
   const updatesPromises = urls.map(async (url) => {
     const path = new URL(url).pathname;
@@ -313,12 +307,6 @@ async function getContributorStats(username: string): Promise<ContributorStats> 
     .slice(0, 3);
 
   const totalCommits = repoStats.reduce((acc, r) => acc + r.commits, 0);
-
-  console.log({username,
-    name: user.name ?? undefined,
-    avatarUrl: user.avatar_url,
-    totalCommitsLastMonth: totalCommits,
-    topRepos: activeRepos})
 
   return {
     username,

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { View, TextInput, FlatList, StyleSheet, Text } from 'react-native';
+import { View, FlatList, StyleSheet, Text } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 import { github } from '../../lib/github';
 import ContributorCard from '../../components/ContributorCard';
 import ContributionCard from '../../components/ContributionCard';
+import SearchBar from '../../components/SearchBar'; // Import the SearchBar component
 import { supabase } from '../../lib/supabase';
 
 export default function ContributorSearchScreen() {
@@ -17,14 +20,33 @@ export default function ContributorSearchScreen() {
       const { data } = await supabase.auth.getUser();
       const id = data?.user?.id ?? null;
       setUserId(id);
-
-      if (id && query.trim().length === 0) {
-        loadFollowedContributions(id);
-      }
     }
 
     getUserId();
   }, []);
+
+  // Use useFocusEffect to refresh the feed when tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      async function refreshOnFocus() {
+        if (query.trim().length === 0) {
+          // Clear current data to force refresh
+          setContributions([]);
+          setContributors([]);
+          
+          // Get fresh userId on each focus
+          const { data } = await supabase.auth.getUser();
+          const currentUserId = data?.user?.id ?? null;
+          
+          if (currentUserId) {
+            await loadFollowedContributions(currentUserId);
+          }
+        }
+      }
+      
+      refreshOnFocus();
+    }, [query]) // Remove userId dependency to avoid stale closure
+  );
 
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
@@ -59,7 +81,7 @@ export default function ContributorSearchScreen() {
 
   async function loadFollowedContributions(userId: string) {
     setLoading(true);
-    try {
+    try {      
       const { data, error } = await supabase
         .from('follows')
         .select('username')
@@ -70,14 +92,40 @@ export default function ContributorSearchScreen() {
         return;
       }
 
-      const usernames = data.map((row) => row.username);
-      const allContributions = await Promise.all(
-        usernames.map((u) => github.getRecentContributions(u))
-      );
+      if (!data || data.length === 0) {
+        setContributions([]);
+        setContributors([]);
+        return;
+      }
 
-      const flattened = allContributions.flat(); // One feed
-      setContributions(flattened);
-      setContributors([]); // Clear contributor cards when showing feed
+      const usernames = data.map((row) => row.username);
+      
+      // Add detailed logging for each user's contributions
+      const allContributions = [];
+      for (const username of usernames) {
+        try {
+          const userContributions = await github.getRecentContributions(username);
+          allContributions.push(...userContributions);
+        } catch (err) {
+          console.error(`Error fetching contributions for ${username}:`, err);
+        }
+      }
+      
+      // Sort contributions by timestamp (most recent first)
+      const sorted = allContributions.sort((a, b) => {
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        
+        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+          console.warn('Invalid date found in contributions:', a.timestamp, b.timestamp);
+          return 0;
+        }
+        
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      setContributions(sorted);
+      setContributors([]);
     } catch (err) {
       console.error('Loading contributions failed:', err);
     } finally {
@@ -87,11 +135,11 @@ export default function ContributorSearchScreen() {
 
   return (
     <View style={styles.container}>
-      <TextInput
+      <SearchBar
         value={query}
         onChangeText={setQuery}
         placeholder="Search GitHub users..."
-        style={styles.input}
+        style={styles.searchBar}
       />
 
       <FlatList
@@ -113,6 +161,18 @@ export default function ContributorSearchScreen() {
             </Text>
           ) : null
         }
+        refreshing={loading}
+        onRefresh={() => {
+          if (query.trim().length === 0) {
+            // Get fresh userId for manual refresh
+            supabase.auth.getUser().then(({ data }) => {
+              const currentUserId = data?.user?.id ?? null;
+              if (currentUserId) {
+                loadFollowedContributions(currentUserId);
+              }
+            });
+          }
+        }}
       />
     </View>
   );
@@ -120,11 +180,8 @@ export default function ContributorSearchScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 12,
-    borderRadius: 8,
+  searchBar: {
+    margin: 0,
     marginBottom: 12,
   },
   empty: {

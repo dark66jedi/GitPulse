@@ -1,5 +1,6 @@
 import { View, Text, Image, StyleSheet, Linking, TouchableOpacity } from 'react-native';
 import type { RepoUpdate } from '../lib/github';
+import Card from './Card'; // Adjust the import path as needed
 
 type Props = {
   update: RepoUpdate;
@@ -26,7 +27,7 @@ export default function RepoUpdateCard({ update }: Props) {
   };
 
   return (
-    <TouchableOpacity onPress={handleOpenRepo} activeOpacity={0.9} style={styles.card}>
+    <Card onPress={handleOpenRepo}>
       <Text style={styles.repoName}>{repo.name}</Text>
       <View style={styles.row}>
         <TouchableOpacity onPress={handleOpenProfile}>
@@ -38,22 +39,11 @@ export default function RepoUpdateCard({ update }: Props) {
       </View>
       {message ? <Text style={styles.message}>"{message}"</Text> : null}
       <Text style={styles.timestamp}>{new Date(timestamp).toLocaleString()}</Text>
-    </TouchableOpacity>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    marginVertical: 6,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
   repoName: {
     fontWeight: 'bold',
     fontSize: 16,

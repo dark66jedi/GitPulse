@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { Linking } from 'react-native';
+import Card from './Card'; // Adjust the import path as needed
 
 type Contribution = {
   repoName: string;
@@ -13,8 +14,12 @@ type Contribution = {
 export default function ContributionCard({ contribution }: { contribution: Contribution }) {
   const timeAgo = getTimeAgo(contribution.timestamp);
 
+  const handleOpenRepo = () => {
+    Linking.openURL(contribution.repoUrl);
+  };
+
   return (
-    <Pressable style={styles.card} onPress={() => openRepo(contribution.repoUrl)}>
+    <Card onPress={handleOpenRepo} style={styles.cardOverride}>
       <View style={styles.header}>
         <Image source={{ uri: contribution.authorAvatar }} style={styles.avatar} />
         <View style={styles.headerText}>
@@ -25,7 +30,7 @@ export default function ContributionCard({ contribution }: { contribution: Contr
       </View>
 
       <Text style={styles.message}>{contribution.message}</Text>
-    </Pressable>
+    </Card>
   );
 }
 
@@ -42,18 +47,10 @@ function getTimeAgo(dateString: string): string {
   return `just now`;
 }
 
-function openRepo(url: string) {
-  Linking.openURL(url);
-}
-
 const styles = StyleSheet.create({
-  card: {
+  cardOverride: {
     padding: 16,
-    backgroundColor: 'white',
-    marginHorizontal: 16,
     marginVertical: 8,
-    borderRadius: 8,
-    elevation: 2,
   },
   header: {
     flexDirection: 'row',

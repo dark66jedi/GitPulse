@@ -5,6 +5,7 @@ import { github } from '../lib/github';
 import { supabase } from '../lib/supabase';
 import { addBookmark, removeBookmark, isBookmarked } from '../lib/bookmarks';
 import type { Repository } from '../lib/github';
+import Card from './Card'; // Adjust the import path as needed
 
 export default function RepoCard({ url }: { url: string }) {
   const [userId, setUserId] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export default function RepoCard({ url }: { url: string }) {
   };
 
   return (
-    <Pressable style={styles.card}>
+    <Card style={styles.cardOverride}>
       <View style={styles.header}>
         <Text style={styles.title}>{repo.name}</Text>
         <Pressable onPress={handleBookmark}>
@@ -84,22 +85,15 @@ export default function RepoCard({ url }: { url: string }) {
       <Text>⭐ {repo.stargazers_count}</Text>
       <Text>⏱ {repo.totalCommits} commits</Text>
       <Text>🕒 Last commit: {formatDate(repo.lastCommitDate)}</Text>
-    </Pressable>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  cardOverride: {
     padding: 16,
-    backgroundColor: 'white',
     marginHorizontal: 16,
     marginVertical: 8,
-    borderRadius: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   header: {
     flexDirection: 'row',
