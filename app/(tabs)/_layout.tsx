@@ -25,7 +25,7 @@ export default function TabsLayout() {
           headerTitle: () => (
             <Image
               source={require('../../assets/images/horizontal_icon.png')}
-              style={{ width: 140, height: 40,resizeMode: 'contain' }}
+              style={{ width: 140, height: 40, resizeMode: 'contain' }}
             />
           ),
           headerRight: () => (
@@ -48,7 +48,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: "Home",
+            title: "Feed",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="home" size={size} color={color} />
             ),

@@ -14,6 +14,23 @@ export type Repository = {
   lastCommitDate: string | null;
 };
 
+export type RepoUpdate = {
+  id: string;
+  repo: {
+    name: string;         
+    url: string;
+  };
+  action: 'commit' | 'star' | 'fork';
+  actor: {
+    username: string;
+    avatarUrl: string;
+    profileUrl: string;
+  };
+  message?: string;
+  timestamp: string;
+};
+
+
 export type Contribution = {
   repoName: string;
   repoUrl: string;
@@ -221,6 +238,73 @@ async function getTrendingReposLast30Days(): Promise<string[]> {
   return data.items.map((repo) => repo.html_url);
 }
 
+async function getRepoUpdates(owner: string, repo: string): Promise<RepoUpdate[]> {
+  const updates: RepoUpdate[] = [];
+
+  const repoFullName = `${owner}/${repo}`;
+  const repoUrl = `https://github.com/${repoFullName}`;
+
+  // 🟡 Commits
+  const commits = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/commits?per_page=5`);
+  for (const commit of commits) {
+    updates.push({
+      id: `${repoFullName}-commit-${commit.sha}`,
+      repo: {
+        name: repoFullName,
+        url: repoUrl,
+      },
+      action: 'commit',
+      actor: {
+        username: commit.author?.login ?? 'unknown',
+        avatarUrl: commit.author?.avatar_url ?? '',
+        profileUrl: commit.author?.html_url ?? '',
+      },
+      message: commit.commit.message,
+      timestamp: commit.commit.author.date,
+    });
+  }
+
+  // 🟡 Stargazers (note: GitHub does not return star timestamps via REST API)
+  const stargazers = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/stargazers?per_page=5`);
+  for (const user of stargazers) {
+    updates.push({
+      id: `${repoFullName}-star-${user.id}`,
+      repo: {
+        name: repoFullName,
+        url: repoUrl,
+      },
+      action: 'star',
+      actor: {
+        username: user.login,
+        avatarUrl: user.avatar_url,
+        profileUrl: user.html_url,
+      },
+      timestamp: new Date().toISOString(), // Placeholder
+    });
+  }
+
+  // 🟡 Forks
+  const forks = await fetchFromGitHub<any[]>(`/repos/${owner}/${repo}/forks?per_page=5`);
+  for (const fork of forks) {
+    updates.push({
+      id: `${repoFullName}-fork-${fork.id}`,
+      repo: {
+        name: repoFullName,
+        url: repoUrl,
+      },
+      action: 'fork',
+      actor: {
+        username: fork.owner.login,
+        avatarUrl: fork.owner.avatar_url,
+        profileUrl: fork.owner.html_url,
+      },
+      timestamp: fork.created_at,
+    });
+  }
+
+  // ⏳ Sort by timestamp (most recent first)
+  return updates.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
 
 export const github = {
   getRepoDetailsByUrl,
@@ -229,5 +313,6 @@ export const github = {
   searchUsersByUsername,
   getRecentContributions,
   getTopStarredRepos,
-  getTrendingReposLast30Days
+  getTrendingReposLast30Days,
+  getRepoUpdates
 };

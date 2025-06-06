@@ -1,45 +1,29 @@
 import { useState, useEffect } from 'react';
-import { 
-  View, 
-  TextInput, 
-  FlatList, 
-  ActivityIndicator, 
-  StyleSheet, 
+import {
+  View,
+  FlatList,
+  ActivityIndicator,
+  StyleSheet,
   Text,
   RefreshControl
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
-import RepoCard from '../../components/RepoCard';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import { github } from '../../lib/github';
+import RepoUpdateCard from '../../components/RepoUpdateCard';
+import type { RepoUpdate } from '../../lib/github';
 
 export default function SearchScreen() {
-  const [query, setQuery] = useState('');
-  const [repoUrls, setRepoUrls] = useState<string[]>([]);
+  const [repoUpdates, setRepoUpdates] = useState<RepoUpdate[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Reload bookmarks when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (!query.trim()) {
-        loadBookmarks();
-      }
-    }, [query])
-  );
-
-  useEffect(() => {
-    if (!query.trim()) {
       loadBookmarks();
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      searchRepos();
-    }, 500);
-
-    return () => clearTimeout(timeout);
-  }, [query]);
+    }, [])
+  );
 
   async function loadBookmarks() {
     setLoading(true);
@@ -48,27 +32,24 @@ export default function SearchScreen() {
       if (error) throw error;
 
       const urls = (data || []).map((b: any) => b.repo_url);
-      setRepoUrls(urls);
+      const updates = await Promise.all(
+        urls.map(async (url) => {
+          const path = new URL(url).pathname;
+          const [, owner, repo] = path.split('/');
+          try {
+            return await github.getRepoUpdates(owner, repo);
+          } catch {
+            return [];
+          }
+        })
+      );
+
+      const sortedUpdates = updates.flat().sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      setRepoUpdates(sortedUpdates);
     } catch (err) {
       console.error('Error loading bookmarks:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function searchRepos() {
-    setLoading(true);
-    try {
-      const response = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=10`, {
-        headers: {
-          Accept: 'application/vnd.github+json',
-        },
-      });
-      const json = await response.json();
-      const urls = (json.items || []).map((repo: any) => repo.html_url);
-      setRepoUrls(urls);
-    } catch (error) {
-      console.error('Error searching repos:', error);
     } finally {
       setLoading(false);
     }
@@ -77,11 +58,7 @@ export default function SearchScreen() {
   async function onRefresh() {
     setRefreshing(true);
     try {
-      if (!query.trim()) {
-        await loadBookmarks();
-      } else {
-        await searchRepos();
-      }
+      await loadBookmarks();
     } finally {
       setRefreshing(false);
     }
@@ -89,32 +66,24 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search repositories..."
-        returnKeyType="search"
-      />
-
       {loading ? (
         <ActivityIndicator style={styles.center} size="large" />
       ) : (
         <FlatList
-          data={repoUrls}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => <RepoCard url={item} />}
+          data={repoUpdates}
+          keyExtractor={(item) => `${item.repo.name}-${item.action}-${item.timestamp}`}
+          renderItem={({ item }) => <RepoUpdateCard update={item} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              {query ? 'No search results found.' : 'No bookmarks yet.'}
+              No bookmarks yet.
             </Text>
           }
           refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
+            <RefreshControl
+              refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#007AFF']} // Android
-              tintColor="#007AFF" // iOS
+              colors={['#007AFF']}
+              tintColor="#007AFF"
             />
           }
         />
@@ -127,13 +96,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-  },
-  input: {
-    margin: 16,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: 'white',
-    fontSize: 16,
   },
   center: {
     flex: 1,

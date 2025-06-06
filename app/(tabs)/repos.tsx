@@ -1,33 +1,73 @@
 import { useEffect, useState } from 'react';
-import { View, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import {
+  View,
+  FlatList,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  TextInput,
+} from 'react-native';
 import RepoCard from '../../components/RepoCard';
 import { github } from '../../lib/github';
 
 type ViewMode = 'top' | 'trending';
 
 export default function TopReposScreen() {
-  const [repoUrls, setRepoUrls] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
   const [view, setView] = useState<ViewMode>('top');
+  const [repoUrls, setRepoUrls] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchRepos = async () => {
-      setLoading(true);
-      try {
-        const urls =
+    const timeout = setTimeout(() => {
+      fetchRepos();
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [query, view]);
+
+  async function fetchRepos() {
+    setLoading(true);
+    try {
+      let urls: string[];
+
+      if (!query.trim()) {
+        // No search — get general top/trending
+        urls =
           view === 'top'
             ? await github.getTopStarredRepos()
             : await github.getTrendingReposLast30Days();
-        setRepoUrls(urls);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      } else {
+        // Search mode — fetch matching repos from GitHub search API
+        const response = await fetch(
+          `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=30`,
+          {
+            headers: {
+              Accept: 'application/vnd.github+json',
+            },
+          }
+        );
+        const json = await response.json();
+        const sorted = [...(json.items || [])];
 
-    fetchRepos();
-  }, [view]);
+        sorted.sort((a: any, b: any) => {
+          if (view === 'top') {
+            return b.stargazers_count - a.stargazers_count;
+          } else {
+            return new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime();
+          }
+        });
+
+        urls = sorted.slice(0, 10).map((repo: any) => repo.html_url);
+      }
+
+      setRepoUrls(urls);
+    } catch (error) {
+      console.error('Error loading repos:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const renderTabs = () => (
     <View style={styles.tabs}>
@@ -36,23 +76,34 @@ export default function TopReposScreen() {
     </View>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        {renderTabs()}
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
   return (
     <View style={{ flex: 1 }}>
-      {renderTabs()}
-      <FlatList
-        data={repoUrls}
-        keyExtractor={(url) => url}
-        renderItem={({ item }) => <RepoCard url={item} />}
+      <TextInput
+        style={styles.input}
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search repositories..."
+        returnKeyType="search"
       />
+
+      {renderTabs()}
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={repoUrls}
+          keyExtractor={(url) => url}
+          renderItem={({ item }) => <RepoCard url={item} />}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              No repositories found.
+            </Text>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -94,5 +145,18 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  input: {
+    margin: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'white',
+    fontSize: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+    fontSize: 16,
   },
 });
