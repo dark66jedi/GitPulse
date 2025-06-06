@@ -29,7 +29,7 @@ export default function SearchBar({
 
 const styles = StyleSheet.create({
   input: {
-    margin: 16,
+    marginBottom: 12,
     padding: 12,
     borderRadius: 8,
     backgroundColor: 'white',

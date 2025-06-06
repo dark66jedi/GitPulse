@@ -50,7 +50,6 @@ function getTimeAgo(dateString: string): string {
 const styles = StyleSheet.create({
   cardOverride: {
     padding: 16,
-    marginVertical: 8,
   },
   header: {
     flexDirection: 'row',

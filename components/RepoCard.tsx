@@ -92,8 +92,6 @@ export default function RepoCard({ url }: { url: string }) {
 const styles = StyleSheet.create({
   cardOverride: {
     padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 8,
   },
   header: {
     flexDirection: 'row',

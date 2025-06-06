@@ -77,7 +77,7 @@ export default function TopReposScreen() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <SearchBar
         value={query}
         onChangeText={setQuery}
@@ -115,6 +115,7 @@ function TabButton({ label, active, onPress }: { label: string; active: boolean;
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
   center: {
     flex: 1,
     justifyContent: 'center',

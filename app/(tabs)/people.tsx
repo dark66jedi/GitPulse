@@ -182,7 +182,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   searchBar: {
     margin: 0,
-    marginBottom: 12,
   },
   empty: {
     textAlign: 'center',

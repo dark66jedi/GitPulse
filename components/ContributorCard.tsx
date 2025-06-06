@@ -74,8 +74,6 @@ export default function ContributorCard({ contributor }: { contributor: Contribu
 const styles = StyleSheet.create({
     cardOverride: {
         padding: 16,
-        borderRadius: 10,
-        marginBottom: 16,
     },
     avatar: {
         width: 48,
